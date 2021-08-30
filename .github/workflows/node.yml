@@ -1,0 +1,95 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+  repository_dispatch:
+    types: [test_trigger]
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Reason'
+        required: true
+        default: 'Test run'
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: node_modules
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.OS }}-build-
+            ${{ runner.OS }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - name: SentryProperty
+        id: write_file
+        uses: tubone24/base64-to-file@test_otsubo
+        with:
+          fileName: 'sentry.properties'
+          fileDir: ${{ github.workspace }}
+          encodedString: ${{ secrets.SENTRY_PROPERTY }}
+      - name: install, build
+        run: |
+          yarn install
+          yarn build
+      - name: typecheck
+        run: yarn typecheck
+      - name: format check
+        run: yarn format:check
+      - name: test
+        run: yarn test
+  e2etest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: node_modules
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.OS }}-build-
+            ${{ runner.OS }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - name: install
+        run: |
+          yarn install
+          npx cypress install
+      - name: e2e test
+        run: yarn test:e2e:ci
+  storybook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: node_modules
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.OS }}-build-
+            ${{ runner.OS }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+      - name: install
+        run: |
+          yarn install
+      - name: build storybook
+        run: yarn build-storybook
