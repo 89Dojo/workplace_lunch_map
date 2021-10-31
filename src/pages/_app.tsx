@@ -3,8 +3,32 @@ import Head from 'next/head'
 import * as React from 'react'
 import { ChakraProvider } from '@chakra-ui/react'
 import { RecoilRoot } from 'recoil'
+import { useRouter } from 'next/router'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { Button } from '@chakra-ui/react'
 
 export default function MyApp({ Component, pageProps }: AppProps) {
+  const { pathname, push } = useRouter()
+  const [loading, setLoading] = useState(true)
+  supabase.auth.onAuthStateChange((_, session) => {
+    if (session?.user && (pathname === '/signin' || pathname === '/signup')) {
+      push('/')
+    } else if (!session?.user && pathname !== '/signup') {
+      push('/signin')
+    }
+  })
+  useEffect(() => {
+    ;(async () => {
+      const user = supabase.auth.user()
+      if (user && (pathname === '/signin' || pathname === '/signup')) {
+        await push('/')
+      } else if (!user && pathname !== '/signup') {
+        await push('/signin')
+      }
+      setLoading(false)
+    })()
+  }, [])
   return (
     <ChakraProvider>
       <RecoilRoot>
@@ -51,7 +75,16 @@ export default function MyApp({ Component, pageProps }: AppProps) {
           <link rel="apple-touch-icon" href={'https://i.imgur.com/M2PhISt.png'} />
           <link rel="icon" href="/favicon.ico" />
         </Head>
-        <Component {...pageProps} />
+        <>
+          {loading ? (
+            <h1>loading...</h1>
+          ) : (
+            <>
+              <Button onClick={() => supabase.auth.signOut()}>ログアウト</Button>
+              <Component {...pageProps} />
+            </>
+          )}
+        </>
       </RecoilRoot>
     </ChakraProvider>
   )
